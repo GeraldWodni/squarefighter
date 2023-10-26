@@ -7,6 +7,9 @@ fighting squares with nothing but squares, say no to fancy models!
 - using chipmunk-physics for physics :P
 
 # Amazing Screenshots:
+01 - static bullets
+![static bullets](screenshots/02-bullets-static.png)
+
 01 - sprite loading works:  
 ![Sprite loading works](screenshots/01-loaded-sprites.png)
 

@@ -20,6 +20,8 @@
 #define max(x,y) ( x<y ? y : x )
 #define min(x,y) ( x<y ? x : y )
 
+#define BULLETS 10
+
 typedef struct {
     SDL_Texture *texture;
     int x;
@@ -41,6 +43,7 @@ typedef struct {
     const unsigned char *keys;
 
     Entity *player;
+    Entity *bullets[BULLETS];
 } Context;
 
 void bailOut( char *message ) {
@@ -58,7 +61,7 @@ void initSDL( Context *context ) {
     context->window = SDL_CreateWindow( context->title, SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, context->width, context->height, 0 );
     if( context->window == NULL )
         bailOut( "Could not create Window." );
-    
+
     context->renderer = SDL_CreateRenderer( context->window, -1, SDL_RENDERER_ACCELERATED );
     if( context->renderer == NULL )
         bailOut( "Could not create Renderer." );
@@ -84,10 +87,14 @@ SDL_Surface *loadImage( Context *context, char *imageFilename ) {
     return optimizedSurface;
 }
 
-Entity *loadEntity( Context *context, char *imageFilename ) {
-    //SDL_Surface *surface = loadImage( 
+Entity *loadEntityEx( Context *context, char *imageFilename, SDL_Texture *texture ) {
+    //SDL_Surface *surface = loadImage(
     Entity *entity = calloc( 1, sizeof(Entity) );
-    entity->texture = IMG_LoadTexture( context->renderer, imageFilename );
+
+    if( texture == NULL )
+        entity->texture = IMG_LoadTexture( context->renderer, imageFilename );
+    else
+        entity->texture = texture;
 
     if( !entity->texture ) {
         printf( "Could not load texture %s\n", imageFilename );
@@ -97,7 +104,10 @@ Entity *loadEntity( Context *context, char *imageFilename ) {
     SDL_QueryTexture( entity->texture, NULL, NULL, &entity->w, &entity->h );
 
     return entity;
-};
+}
+Entity *loadEntity( Context *context, char *imageFilename ) {
+    return loadEntityEx( context, imageFilename, NULL );
+}
 
 void update( Context *context, float delta ) {
     if( context->keys[ SDL_SCANCODE_ESCAPE ] )
@@ -137,6 +147,8 @@ void draw( Context *context ){
     SDL_RenderCopyEx( context->renderer, texture, NULL, &targetRect, 0.0, NULL, SDL_FLIP_NONE );
 
     drawEntity( context, context->player );
+    for( int i = 0; i < BULLETS; i++ )
+        drawEntity( context, context->bullets[i] );
 }
 
 void render( Context *context ) {
@@ -168,12 +180,22 @@ int main( int argc, char **argv ) {
 
     image = loadImage( &context, "media/player.png" );
     texture = IMG_LoadTexture( context.renderer, "media/player.png" );
+
+    /* initialization */
     context.player = loadEntity( &context, "media/player.png" );
     context.player->x = 200;
     context.player->y = 200;
 
-    Uint64 last, now=SDL_GetPerformanceCounter();
+    SDL_Texture *lastTexture = NULL;
+    for( int i = 0; i < BULLETS; i++ ) {
+        context.bullets[i] = loadEntityEx( &context, "media/bullet.png", lastTexture );
+        lastTexture = context.bullets[0]->texture;
 
+        context.bullets[i]->fx = context.bullets[i]->x = i * 50;
+        context.bullets[i]->fy = context.bullets[i]->y = i * 25;
+    }
+
+    Uint64 last, now=SDL_GetPerformanceCounter();
     char *windowTitle = calloc( 1, strlen(context.title) + 100 );
 
     while( context.running )  {
