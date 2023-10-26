@@ -13,7 +13,7 @@ LINK_OPTIONS = -m32
 #Header include directories
 HEADERS = -D_REENTRANT
 #Libraries for linking
-LIBS = -lSDL2
+LIBS = -lSDL2 -lSDL2_image
 
 # Dependency options
 DEPENDENCY_OPTIONS = -MM
