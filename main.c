@@ -17,12 +17,17 @@
 #define SDL_INIT_MODULES (SDL_INIT_VIDEO)
 #define IMG_INIT_MODULES (IMG_INIT_JPG | IMG_INIT_PNG)
 
+#define max(x,y) ( x<y ? y : x )
+#define min(x,y) ( x<y ? x : y )
+
 typedef struct {
     SDL_Texture *texture;
     int x;
     int y;
     int w;
     int h;
+    float fx;
+    float fy;
 } Entity;
 
 typedef struct {
@@ -94,9 +99,24 @@ Entity *loadEntity( Context *context, char *imageFilename ) {
     return entity;
 };
 
-void update( Context *context ) {
+void update( Context *context, float delta ) {
     if( context->keys[ SDL_SCANCODE_ESCAPE ] )
         context->running = 0;
+
+    /* player movement */
+    float playerSpeed = delta * 1000;
+    if( context->keys[ SDL_SCANCODE_A ] || context->keys[ SDL_SCANCODE_LEFT ] )
+        context->player->fx = max( 0, context->player->fx - playerSpeed );
+    if( context->keys[ SDL_SCANCODE_D ] || context->keys[ SDL_SCANCODE_RIGHT ] )
+        context->player->fx = min( context->width - context->player->w, context->player->fx + playerSpeed );
+
+    if( context->keys[ SDL_SCANCODE_W ] || context->keys[ SDL_SCANCODE_UP ] )
+        context->player->fy = max( 0, context->player->fy - playerSpeed );
+    if( context->keys[ SDL_SCANCODE_S ] || context->keys[ SDL_SCANCODE_DOWN ] )
+        context->player->fy = min( context->height - context->player->h, context->player->fy + playerSpeed );
+
+    context->player->x = (int)context->player->fx;
+    context->player->y = (int)context->player->fy;
 }
 
 SDL_Surface *image;
@@ -152,6 +172,10 @@ int main( int argc, char **argv ) {
     context.player->x = 200;
     context.player->y = 200;
 
+    Uint64 last, now=SDL_GetPerformanceCounter();
+
+    char *windowTitle = calloc( 1, strlen(context.title) + 100 );
+
     while( context.running )  {
         SDL_Event event;
         while( SDL_PollEvent(&event) )
@@ -165,11 +189,23 @@ int main( int argc, char **argv ) {
             }
         context.keys = SDL_GetKeyboardState(NULL);
 
-        update( &context );
+        last = now;
+        now = SDL_GetPerformanceCounter();
+        float delta = (float)(now-last) / (float)SDL_GetPerformanceFrequency();
+        int fps = (int)(1.0f / delta);
+
+        sprintf( windowTitle, "%s - FPS: %d", context.title, fps );
+        //SDL_SetWindowTitle( context.window, windowTitle );
+
+        update( &context, delta );
         render( &context );
     }
 
+    printf("Cleaning up" );
+    free( windowTitle );
+
     printf("Done" );
+
     return 0;
 }
 
