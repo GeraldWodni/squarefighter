@@ -21,6 +21,7 @@
 #define min(x,y) ( x<y ? x : y )
 
 #define BULLETS 10
+#define BLOCKS 20
 
 typedef struct {
     SDL_Texture *texture;
@@ -31,6 +32,7 @@ typedef struct {
     float fx;
     float fy;
 
+    int dynamic;
     int enabled;
     int ttlEnabled;
     float ttl;
@@ -49,6 +51,7 @@ typedef struct {
 
     Entity *player;
     Entity *bullets[BULLETS];
+    Entity *blocks[BLOCKS];
 } Context;
 
 void bailOut( char *message ) {
@@ -109,6 +112,7 @@ Entity *loadEntityEx( Context *context, char *imageFilename, SDL_Texture *textur
     SDL_QueryTexture( entity->texture, NULL, NULL, &entity->w, &entity->h );
 
     entity->enabled = -1;
+    entity->dynamic = 0;
 
     return entity;
 }
@@ -134,10 +138,11 @@ void shoot( Context *context ) {
     bullet->enabled = -1;
     bullet->ttlEnabled = -1;
     bullet->ttl = 10;
+    bullet->dynamic = -1;
 }
 
 void updateEntity( Context *context, Entity *entity, float delta ) {
-    if( !entity->enabled )
+    if( !entity->enabled || !entity->dynamic )
         return;
 
     if( entity->ttlEnabled )
@@ -199,6 +204,8 @@ void draw( Context *context ){
     drawEntity( context, context->player );
     for( int i = 0; i < BULLETS; i++ )
         drawEntity( context, context->bullets[i] );
+    for( int i = 0; i < BLOCKS; i++ )
+        drawEntity( context, context->blocks[i] );
 }
 
 void render( Context *context ) {
@@ -240,12 +247,18 @@ int main( int argc, char **argv ) {
     SDL_Texture *lastTexture = NULL;
     for( int i = 0; i < BULLETS; i++ ) {
         context.bullets[i] = loadEntityEx( &context, "media/bullet.png", lastTexture );
-        lastTexture = context.bullets[0]->texture;
-
-        context.bullets[i]->fx = context.bullets[i]->x = i * 50;
-        context.bullets[i]->fy = context.bullets[i]->y = i * 25;
         context.bullets[i]->enabled = 0;
+        lastTexture = context.bullets[0]->texture;
     }
+    lastTexture = NULL;
+    for( int i = 0; i < BLOCKS; i++ ) {
+        context.blocks[i] = loadEntityEx( &context, "media/block-purple.png", lastTexture );
+        lastTexture = context.blocks[0]->texture;
+
+        context.blocks[i]->x = context.blocks[i]->w*i;
+        context.blocks[i]->y = context.height - context.blocks[i]->h;
+    }
+
 
     Uint64 last, now=SDL_GetPerformanceCounter();
     char *windowTitle = calloc( 1, strlen(context.title) + 100 );
