@@ -7,7 +7,10 @@ fighting squares with nothing but squares, say no to fancy models!
 - using chipmunk-physics for physics :P
 
 # Amazing Screenshots:
-01 - static bullets
+03 - static bullets mato player
+![static bullets](screenshots/03-bullets-static-mato-player.png)
+
+02 - static bullets
 ![static bullets](screenshots/02-bullets-static.png)
 
 01 - sprite loading works:  
