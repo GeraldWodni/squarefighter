@@ -30,6 +30,10 @@ typedef struct {
     int h;
     float fx;
     float fy;
+
+    int enabled;
+    int ttlEnabled;
+    float ttl;
 } Entity;
 
 typedef struct {
@@ -41,6 +45,7 @@ typedef struct {
     char *title;
     int running;
     const unsigned char *keys;
+    unsigned char oldKeys[SDL_NUM_SCANCODES];
 
     Entity *player;
     Entity *bullets[BULLETS];
@@ -103,10 +108,47 @@ Entity *loadEntityEx( Context *context, char *imageFilename, SDL_Texture *textur
 
     SDL_QueryTexture( entity->texture, NULL, NULL, &entity->w, &entity->h );
 
+    entity->enabled = -1;
+
     return entity;
 }
 Entity *loadEntity( Context *context, char *imageFilename ) {
     return loadEntityEx( context, imageFilename, NULL );
+}
+
+void shoot( Context *context ) {
+    Entity *bullet = context->bullets[0];
+    int i = 0;
+    while( bullet->enabled && ++i < BULLETS )
+        bullet = context->bullets[i];
+
+    if( i == BULLETS ) {
+        //printf( "Out of bullets, all active\n" );
+        return;
+    }
+    else
+        printf( "SHOOT %d\n", i );
+
+    bullet->x = context->player->x + context->player->w;
+    bullet->y = context->player->y + context->player->h;
+    bullet->enabled = -1;
+    bullet->ttlEnabled = -1;
+    bullet->ttl = 10;
+}
+
+void updateEntity( Context *context, Entity *entity, float delta ) {
+    if( !entity->enabled )
+        return;
+
+    if( entity->ttlEnabled )
+        entity->ttl -= delta;
+
+    if( entity->ttl < 0 ) {
+        entity->ttl = 0;
+        entity->ttlEnabled = 0;
+        entity->enabled = 0;
+        return;
+    }
 }
 
 void update( Context *context, float delta ) {
@@ -125,14 +167,22 @@ void update( Context *context, float delta ) {
     if( context->keys[ SDL_SCANCODE_S ] || context->keys[ SDL_SCANCODE_DOWN ] )
         context->player->fy = min( context->height - context->player->h, context->player->fy + playerSpeed );
 
+    if( context->keys[ SDL_SCANCODE_RETURN ] && !context->oldKeys[ SDL_SCANCODE_RETURN ] )
+        shoot( context );
+
     context->player->x = (int)context->player->fx;
     context->player->y = (int)context->player->fy;
+
+    for( int i = 0; i < BULLETS; i++ )
+        updateEntity( context, context->bullets[i], delta );
 }
 
 SDL_Surface *image;
 SDL_Texture *texture;
 
 void drawEntity( Context *context, Entity *entity ) {
+    if( !entity->enabled )
+        return;
     SDL_Rect targetRect = { entity->x, entity->y, entity->w, entity->h };
     SDL_RenderCopyEx( context->renderer, entity->texture, NULL, &targetRect, 0.0, NULL, SDL_FLIP_NONE );
 }
@@ -181,6 +231,7 @@ int main( int argc, char **argv ) {
     image = loadImage( &context, "media/player.png" );
     texture = IMG_LoadTexture( context.renderer, "media/player.png" );
 
+
     /* initialization */
     context.player = loadEntity( &context, "media/player.png" );
     context.player->x = 200;
@@ -193,6 +244,7 @@ int main( int argc, char **argv ) {
 
         context.bullets[i]->fx = context.bullets[i]->x = i * 50;
         context.bullets[i]->fy = context.bullets[i]->y = i * 25;
+        context.bullets[i]->enabled = 0;
     }
 
     Uint64 last, now=SDL_GetPerformanceCounter();
@@ -221,6 +273,8 @@ int main( int argc, char **argv ) {
 
         update( &context, delta );
         render( &context );
+
+        memcpy( context.oldKeys, context.keys, SDL_NUM_SCANCODES );
     }
 
     printf("Cleaning up" );
