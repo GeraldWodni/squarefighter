@@ -11,4 +11,4 @@ fighting squares with nothing but squares, say no to fancy models!
 ![Sprite loading works](screenshots/01-loaded-sprites.png)
 
 00 - A yellow rect (oh no it's not a square - aaaa):  
-![A yellow square](screenshots/01-loaded-sprites.png)
+![A yellow square](screenshots/00-yellow-square.png)
