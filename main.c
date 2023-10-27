@@ -173,6 +173,28 @@ Entity *loadEntity( Context *context, char *imageFilename ) {
     return loadEntityEx( context, imageFilename, NULL );
 }
 
+void activateEntity( Context *context, Entity *entity ) {
+    frAddBodyToWorld( context->world, entity->body );
+    frClearBodyForces( entity->body );
+    frSetBodyType( entity->body, frGetBodyType( entity->body ) );
+}
+void deactivateEntity( Context *context, Entity *entity ) {
+    frRemoveBodyFromWorld( context->world, entity->body );
+}
+/* apply body to entity */
+void updateEntityPhysics( Entity *entity ) {
+    frVector2 position = frGetBodyPosition( entity->body );
+    entity->x = frUnitsToPixels( position.x ) - entity->w/2;
+    entity->y = frUnitsToPixels( position.y ) - entity->h/2;
+    entity->angle = rad2deg( frGetBodyAngle( entity->body ) );
+}
+/* apply entity to body */
+void updateBodyPhysics( Entity *entity ) {
+    frSetBodyPosition( entity->body, frVector2PixelsToUnits(
+        (frVector2) { .x = entity->x + entity->w/2, .y = entity->y + entity->h/2 }
+    ));
+    frSetBodyAngle( entity->body, deg2rad( entity->angle ) );
+}
 frBody *addEntityBody( Context *context, Entity *entity, frBodyType bodyType ) {
     entity->body = frCreateBodyFromShape(
             bodyType,
@@ -183,14 +205,7 @@ frBody *addEntityBody( Context *context, Entity *entity, frBodyType bodyType ) {
             )
     );
     frSetBodyAngle( entity->body, deg2rad( entity->angle ) );
-    frAddBodyToWorld( context->world, entity->body );
-}
-
-void updateEntityPhysics( Entity *entity ) {
-    frVector2 position = frGetBodyPosition( entity->body );
-    entity->x = frUnitsToPixels( position.x ) - entity->w/2;
-    entity->y = frUnitsToPixels( position.y ) - entity->h/2;
-    entity->angle = rad2deg( frGetBodyAngle( entity->body ) );
+    activateEntity( context, entity );
 }
 
 
@@ -209,8 +224,12 @@ void shoot( Context *context ) {
     bullet->y = context->player->y + context->player->h;
     bullet->enabled = -1;
     bullet->ttlEnabled = -1;
-    bullet->ttl = 10;
+    bullet->ttl = 3;
     bullet->dynamic = -1;
+
+    updateBodyPhysics( bullet );
+    activateEntity( context, bullet );
+    frApplyGravityToBody( bullet->body, (frVector2) { .x = 7000, .y = 0.0 } );
 }
 
 void updateEntity( Context *context, Entity *entity, float delta ) {
@@ -224,6 +243,7 @@ void updateEntity( Context *context, Entity *entity, float delta ) {
         entity->ttl = 0;
         entity->ttlEnabled = 0;
         entity->enabled = 0;
+        deactivateEntity( context, entity );
         return;
     }
 }
@@ -326,8 +346,6 @@ void draw( Context *context ){
     SDL_RenderCopyEx( context->renderer, texture, NULL, &targetRect, 0.0, NULL, SDL_FLIP_NONE );
 
     drawEntity( context, context->player );
-    for( int i = 0; i < BULLETS; i++ )
-        drawEntity( context, context->bullets[i] );
 
     Link *link = context->entities;
     while( link != NULL ) {
@@ -389,6 +407,10 @@ int main( int argc, char **argv ) {
         context.bullets[i] = loadEntityEx( &context, "media/bullet.png", lastTexture );
         context.bullets[i]->enabled = 0;
         lastTexture = context.bullets[0]->texture;
+
+        addLink( &context.entities, context.bullets[i] );
+        addEntityBody( &context, context.bullets[i], FR_BODY_DYNAMIC );
+        deactivateEntity( &context, context.bullets[i] );
     }
     lastTexture = NULL;
     for( int i = 0; i < BLOCKS; i++ ) {
