@@ -89,15 +89,10 @@ Link *newLink( void *item ) {
 Link *addLink( Link **link, void *item ) {
     Link *nextLink = newLink( item );
 
-    if( *link == NULL ) {
+    if( *link == NULL )
         *link = nextLink;
-        printf( "Set new root link\n" );
-    }
-    else {
-        printf( "Set next link\n" );
+    else
         lastLink( *link )->next = nextLink;
-        printf( "Done setting next link\n" );
-    }
 
     return nextLink;
 }
@@ -340,8 +335,6 @@ int main( int argc, char **argv ) {
     initSDL( &context );
     printf("Post-init\n" );
 
-    printf( "Links: %d\n", linkCount( context.entities ) );
-
     image = loadImage( &context, "media/player.png" );
     texture = IMG_LoadTexture( context.renderer, "media/player.png" );
 
@@ -386,7 +379,6 @@ int main( int argc, char **argv ) {
         context.blocks[i]->y = context.height - context.blocks[i]->h;
         addLink( &context.entities, context.blocks[i] );
     }
-
     printf( "Links: %d\n", linkCount( context.entities ) );
 
 
