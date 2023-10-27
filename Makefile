@@ -5,15 +5,16 @@ CC = gcc
 
 # Run Options
 COMMANDLINE_OPTIONS =
+LD_LIBRARY_PATH=/lib:/usr/lib:/usr/local/lib
 
 # Compiler options during compilation
-COMPILE_OPTIONS = -m32
-LINK_OPTIONS = -m32
+COMPILE_OPTIONS =
+LINK_OPTIONS =
 
 #Header include directories
 HEADERS = -D_REENTRANT
 #Libraries for linking
-LIBS = -lSDL2 -lSDL2_image
+LIBS = -lSDL2 -lSDL2_image -lchipmunk
 
 # Dependency options
 DEPENDENCY_OPTIONS = -MM
@@ -52,7 +53,7 @@ endif
 
 # Build & Run Project
 run: $(PROJECT)
-	./$(PROJECT) $(COMMANDLINE_OPTIONS)
+	LD_LIBRARY_PATH=$(LD_LIBRARY_PATH) ./$(PROJECT) $(COMMANDLINE_OPTIONS)
 
 # Clean & Debug
 .PHONY: makefile-debug

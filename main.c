@@ -13,6 +13,7 @@
 
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_image.h>
+#include <chipmunk/chipmunk.h>
 
 #define SDL_INIT_MODULES (SDL_INIT_VIDEO)
 #define IMG_INIT_MODULES (IMG_INIT_JPG | IMG_INIT_PNG)
@@ -22,6 +23,7 @@
 
 #define BULLETS 10
 #define BLOCKS 20
+#define PHYSICS_SPS 60
 
 typedef struct {
     SDL_Texture *texture;
@@ -52,6 +54,8 @@ typedef struct {
     Entity *player;
     Entity *bullets[BULLETS];
     Entity *blocks[BLOCKS];
+
+    cpSpace space;
 } Context;
 
 void bailOut( char *message ) {
@@ -127,11 +131,9 @@ void shoot( Context *context ) {
         bullet = context->bullets[i];
 
     if( i == BULLETS ) {
-        //printf( "Out of bullets, all active\n" );
+        printf( "Out of bullets, all active\n" );
         return;
     }
-    else
-        printf( "SHOOT %d\n", i );
 
     bullet->x = context->player->x + context->player->w;
     bullet->y = context->player->y + context->player->h;
@@ -180,6 +182,12 @@ void update( Context *context, float delta ) {
 
     for( int i = 0; i < BULLETS; i++ )
         updateEntity( context, context->bullets[i], delta );
+}
+
+void updatePhysics( Context *context, float timeStep ) {
+    for( int i = 0; i <BULLETS; i++ ) {
+
+    }
 }
 
 SDL_Surface *image;
@@ -260,7 +268,7 @@ int main( int argc, char **argv ) {
     }
 
 
-    Uint64 last, now=SDL_GetPerformanceCounter();
+    Uint64 last, now=SDL_GetPerformanceCounter(), nextPhysics = now;
     char *windowTitle = calloc( 1, strlen(context.title) + 100 );
 
     while( context.running )  {
@@ -285,6 +293,10 @@ int main( int argc, char **argv ) {
         //SDL_SetWindowTitle( context.window, windowTitle );
 
         update( &context, delta );
+        if( now >= nextPhysics ) {
+            nextPhysics += (float)SDL_GetPerformanceFrequency() / (float)PHYSICS_SPS;
+            updatePhysics( &context, 1.0f / PHYSICS_SPS );
+        }
         render( &context );
 
         memcpy( context.oldKeys, context.keys, SDL_NUM_SCANCODES );
