@@ -13,7 +13,7 @@
 
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_image.h>
-#include <chipmunk/chipmunk.h>
+#include "ferox.h"
 
 #define SDL_INIT_MODULES (SDL_INIT_VIDEO)
 #define IMG_INIT_MODULES (IMG_INIT_JPG | IMG_INIT_PNG)
@@ -24,6 +24,7 @@
 #define BULLETS 10
 #define BLOCKS 20
 #define PHYSICS_SPS 60
+#define PHYSICS_CELL 2.8f
 
 typedef struct {
     SDL_Texture *texture;
@@ -55,7 +56,8 @@ typedef struct {
     Entity *bullets[BULLETS];
     Entity *blocks[BLOCKS];
 
-    cpSpace space;
+    frWorld *world;
+
 } Context;
 
 void bailOut( char *message ) {
@@ -246,6 +248,8 @@ int main( int argc, char **argv ) {
     image = loadImage( &context, "media/player.png" );
     texture = IMG_LoadTexture( context.renderer, "media/player.png" );
 
+    /* physics init */
+    context.world = frCreateWorld(frVector2ScalarMultiply(FR_WORLD_DEFAULT_GRAVITY, 2.5f), PHYSICS_CELL);
 
     /* initialization */
     context.player = loadEntity( &context, "media/player.png" );

@@ -12,12 +12,13 @@ COMPILE_OPTIONS =
 LINK_OPTIONS =
 
 #Header include directories
-HEADERS = -D_REENTRANT
+INCLUDES = -I/home/fiz/c/chipmunk/ferox-0.8.4/include
+HEADERS = -D_REENTRANT $(INCLUDES)
 #Libraries for linking
-LIBS = -lSDL2 -lSDL2_image -lchipmunk
+LIBS = -lSDL2 -lSDL2_image -lm /home/fiz/c/chipmunk/ferox-0.8.4/lib/libferox.a
 
 # Dependency options
-DEPENDENCY_OPTIONS = -MM
+DEPENDENCY_OPTIONS = -MM $(INCLUDES)
 
 #-- Do not edit below this line --
 

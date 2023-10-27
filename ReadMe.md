@@ -4,7 +4,8 @@ fighting squares with nothing but squares, say no to fancy models!
 
 # Motivation:
 - Getting re-aquainted with libSDL2
-- using chipmunk-physics for physics :P
+- ~~using chipmunk-physics for physics :P~~
+- using [ferox](https://github.com/c-krit/ferox) for physics ;)
 
 # Amazing Screenshots:
 03 - static bullets mato player
