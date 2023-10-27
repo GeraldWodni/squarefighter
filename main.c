@@ -26,6 +26,11 @@
 #define PHYSICS_SPS 60
 #define PHYSICS_CELL 2.8f
 
+typedef struct _Link {
+    struct _Link *next;
+    void *item;
+} Link;
+
 typedef struct {
     SDL_Texture *texture;
     int x;
@@ -56,6 +61,8 @@ typedef struct {
     Entity *bullets[BULLETS];
     Entity *blocks[BLOCKS];
 
+    Link *entities;
+
     frWorld *world;
     frBody *ground, *box;
 
@@ -64,6 +71,46 @@ typedef struct {
 void bailOut( char *message ) {
     printf( "Fatal Error: %s\nSDL:%s\n", message, SDL_GetError() );
     exit(1);
+}
+
+Link *lastLink( Link *link ) {
+    while( link->next != NULL ) {
+        link = link->next;
+    }
+    return link;
+}
+
+Link *newLink( void *item ) {
+    Link *link = calloc( 1, sizeof( Link ) );
+    link->item = item;
+    return link;
+}
+
+Link *addLink( Link **link, void *item ) {
+    Link *nextLink = newLink( item );
+
+    if( *link == NULL ) {
+        *link = nextLink;
+        printf( "Set new root link\n" );
+    }
+    else {
+        printf( "Set next link\n" );
+        lastLink( *link )->next = nextLink;
+        printf( "Done setting next link\n" );
+    }
+
+    return nextLink;
+}
+
+int linkCount( Link *link ) {
+    if( link == NULL )
+        return 0;
+
+    int i;
+    for( i = 1; link->next != NULL; link = link->next )
+        i++;
+
+    return i;
 }
 
 void initSDL( Context *context ) {
@@ -276,6 +323,7 @@ void render( Context *context ) {
 
 int main( int argc, char **argv ) {
     Context context;
+    context.entities = NULL;
     context.running = -1;
 
     char *title = argv[0];
@@ -288,9 +336,11 @@ int main( int argc, char **argv ) {
     context.width = 800;
     context.height = 600;
 
-    printf("Pre-init" );
+    printf("Pre-init\n" );
     initSDL( &context );
-    printf("Post-init" );
+    printf("Post-init\n" );
+
+    printf( "Links: %d\n", linkCount( context.entities ) );
 
     image = loadImage( &context, "media/player.png" );
     texture = IMG_LoadTexture( context.renderer, "media/player.png" );
@@ -334,7 +384,10 @@ int main( int argc, char **argv ) {
 
         context.blocks[i]->x = context.blocks[i]->w*i;
         context.blocks[i]->y = context.height - context.blocks[i]->h;
+        addLink( &context.entities, context.blocks[i] );
     }
+
+    printf( "Links: %d\n", linkCount( context.entities ) );
 
 
     Uint64 last, now=SDL_GetPerformanceCounter(), nextPhysics = now;
