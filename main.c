@@ -69,7 +69,6 @@ typedef struct {
     Link *entities;
 
     frWorld *world;
-    frBody *ground, *box;
 
 } Context;
 
@@ -338,9 +337,6 @@ void draw( Context *context ){
 
     for( int i = 0; i < frGetBodyCountForWorld( context->world ); i++ )
         drawPhysics( context, frGetBodyFromWorld( context->world, i ) );
-
-    //drawPhysics( context, context->box );
-    //drawPhysics( context, context->ground );
 }
 
 void render( Context *context ) {
@@ -376,31 +372,12 @@ int main( int argc, char **argv ) {
 
     /* physics init */
     context.world = frCreateWorld(frVector2ScalarMultiply(FR_WORLD_DEFAULT_GRAVITY, 2.5f), PHYSICS_CELL);
-    context.ground = frCreateBodyFromShape(
-        FR_BODY_STATIC,
-        frVector2PixelsToUnits((frVector2) { .x = 0.5f * context.width, .y = 0.85f * context.height }),
-        frCreateRectangle((frMaterial) { .density = 1.25f, .friction = 0.5f },
-            frPixelsToUnits(0.75f * context.width),
-            frPixelsToUnits(0.1f * context.height)
-        )
-    );
 
     Entity *box = loadEntity( &context, "media/block-blue.png" );
     box->x = 300;
     box->y = 300;
     addLink( &context.entities, box );
     addEntityBody( &context, box, FR_BODY_DYNAMIC );
-
-    //frAddBodyToWorld( context.world, context.ground );
-    context.box = frCreateBodyFromShape(
-            FR_BODY_DYNAMIC,
-            frVector2PixelsToUnits( (frVector2) { .x = 0.5f * context.width, .y = 0.35f * context.height } ),
-            frCreateRectangle( (frMaterial) { .density = 1.0f, .friction=0.35f },
-                frPixelsToUnits(45.0f),
-                frPixelsToUnits(45.0f)
-            )
-    );
-    frAddBodyToWorld( context.world, context.box );
 
     /* initialization */
     context.player = loadEntity( &context, "media/player.png" );
@@ -424,14 +401,11 @@ int main( int argc, char **argv ) {
         addLink( &context.entities, context.blocks[i] );
         addEntityBody( &context, context.blocks[i], FR_BODY_STATIC );
     }
-    printf( "Links: %d\n", linkCount( context.entities ) );
-
 
     Uint64 last, now=SDL_GetPerformanceCounter(), nextPhysics = now;
     char *windowTitle = calloc( 1, strlen(context.title) + 100 );
 
-    SDL_Delay( 3000 );
-
+    int frameCounter = 0;
     while( context.running )  {
         SDL_Event event;
         while( SDL_PollEvent(&event) )
@@ -450,15 +424,18 @@ int main( int argc, char **argv ) {
         float delta = (float)(now-last) / (float)SDL_GetPerformanceFrequency();
         int fps = (int)(1.0f / delta);
 
-        sprintf( windowTitle, "%s - FPS: %d", context.title, fps );
-        //SDL_SetWindowTitle( context.window, windowTitle );
-
         update( &context, delta );
         if( now >= nextPhysics ) {
             nextPhysics += (float)SDL_GetPerformanceFrequency() / (float)PHYSICS_SPS;
             updatePhysics( &context, 1.0f / PHYSICS_SPS );
+
+            fps = frameCounter * PHYSICS_SPS;
+            frameCounter = 0;
+            sprintf( windowTitle, "%s - FPS: %d", context.title, fps );
+            SDL_SetWindowTitle( context.window, windowTitle );
         }
         render( &context );
+        frameCounter++;
 
         memcpy( context.oldKeys, context.keys, SDL_NUM_SCANCODES );
     }
