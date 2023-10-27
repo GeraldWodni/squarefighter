@@ -57,6 +57,7 @@ typedef struct {
     Entity *blocks[BLOCKS];
 
     frWorld *world;
+    frBody *ground, *box;
 
 } Context;
 
@@ -187,6 +188,7 @@ void update( Context *context, float delta ) {
 }
 
 void updatePhysics( Context *context, float timeStep ) {
+    frUpdateWorld( context->world, timeStep );
     for( int i = 0; i <BULLETS; i++ ) {
 
     }
@@ -202,6 +204,48 @@ void drawEntity( Context *context, Entity *entity ) {
     SDL_RenderCopyEx( context->renderer, entity->texture, NULL, &targetRect, 0.0, NULL, SDL_FLIP_NONE );
 }
 
+void drawPhysics( Context *context, frBody *body ) {
+
+    frShape *shape = frGetBodyShape( body );
+    frTransform transform = frGetBodyTransform( body );
+    frVector2 position = frVector2UnitsToPixels( frGetBodyPosition(body) );
+
+    switch( frGetBodyType( body ) ) {
+        case FR_BODY_STATIC:
+            SDL_SetRenderDrawColor( context->renderer, 0xFF, 0xFF, 0xFF, 0xFF );
+            break;
+        case FR_BODY_DYNAMIC:
+            SDL_SetRenderDrawColor( context->renderer, 0x00, 0xFF, 0xFF, 0xFF );
+            break;
+        case FR_BODY_KINEMATIC:
+            SDL_SetRenderDrawColor( context->renderer, 0xFF, 0xFF, 0x00, 0xFF );
+            break;
+        case FR_BODY_UNKNOWN:
+        default:
+            SDL_SetRenderDrawColor( context->renderer, 0xFF, 0x00, 0x00, 0xFF );
+    }
+
+    switch( frGetShapeType( shape) ) {
+        case FR_SHAPE_POLYGON:
+            const frVertices *vertices = frGetPolygonVertices( shape );
+            for( int j = vertices->count - 1, i = 0; i < vertices->count; j = i, i++ ) {
+                frVector2 v1 = frVector2Transform( vertices->data[j], transform ),
+                          v2 = frVector2Transform( vertices->data[i], transform );
+
+                v1 = frVector2UnitsToPixels(v1);
+                v2 = frVector2UnitsToPixels(v2);
+
+                SDL_RenderDrawLine( context->renderer, v1.x, v1.y, v2.x, v2.y );
+            }
+
+
+            break;
+        default:
+            printf( "Unknown shape to draw :(" );
+            break;
+    }
+};
+
 void draw( Context *context ){
     SDL_SetRenderDrawColor( context->renderer, 0xFF, 0xFF, 0x00, 0xFF );
     SDL_Rect rect = { 10, 10, 200, 100 };
@@ -216,6 +260,9 @@ void draw( Context *context ){
         drawEntity( context, context->bullets[i] );
     for( int i = 0; i < BLOCKS; i++ )
         drawEntity( context, context->blocks[i] );
+
+    drawPhysics( context, context->box );
+    drawPhysics( context, context->ground );
 }
 
 void render( Context *context ) {
@@ -250,6 +297,24 @@ int main( int argc, char **argv ) {
 
     /* physics init */
     context.world = frCreateWorld(frVector2ScalarMultiply(FR_WORLD_DEFAULT_GRAVITY, 2.5f), PHYSICS_CELL);
+    context.ground = frCreateBodyFromShape(
+        FR_BODY_STATIC,
+        frVector2PixelsToUnits((frVector2) { .x = 0.5f * context.width, .y = 0.85f * context.height }),
+        frCreateRectangle((frMaterial) { .density = 1.25f, .friction = 0.5f },
+            frPixelsToUnits(0.75f * context.width),
+            frPixelsToUnits(0.1f * context.height)
+        )
+    );
+    frAddBodyToWorld( context.world, context.ground );
+    context.box = frCreateBodyFromShape(
+            FR_BODY_DYNAMIC,
+            frVector2PixelsToUnits( (frVector2) { .x = 0.5f * context.width, .y = 0.35f * context.height } ),
+            frCreateRectangle( (frMaterial) { .density = 1.0f, .friction=0.35f },
+                frPixelsToUnits(45.0f),
+                frPixelsToUnits(45.0f)
+            )
+    );
+    frAddBodyToWorld( context.world, context.box );
 
     /* initialization */
     context.player = loadEntity( &context, "media/player.png" );
