@@ -430,6 +430,8 @@ int main( int argc, char **argv ) {
     Uint64 last, now=SDL_GetPerformanceCounter(), nextPhysics = now;
     char *windowTitle = calloc( 1, strlen(context.title) + 100 );
 
+    SDL_Delay( 3000 );
+
     while( context.running )  {
         SDL_Event event;
         while( SDL_PollEvent(&event) )

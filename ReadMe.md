@@ -8,6 +8,9 @@ fighting squares with nothing but squares, say no to fancy models!
 - using [ferox](https://github.com/c-krit/ferox) for physics ;)
 
 # Amazing Screenshots:
+04 - physics started
+![static bullets](screenshots/04-physics-started.png)
+
 03 - static bullets mato player
 ![static bullets](screenshots/03-bullets-static-mato-player.png)
 
