@@ -33,6 +33,11 @@ typedef struct _Link {
     void *item;
 } Link;
 
+typedef enum _EntityType {
+    ENTITY_UNKNOWN,
+    ENTITY_BULLET,
+} EntityType;
+
 typedef struct {
     SDL_Texture *texture;
     int x;
@@ -42,6 +47,8 @@ typedef struct {
     float angle;
     float fx;
     float fy;
+
+    EntityType type;
 
     int dynamic;
     int enabled;
@@ -71,6 +78,8 @@ typedef struct {
     frWorld *world;
 
 } Context;
+
+static Context *globalContext;
 
 void bailOut( char *message ) {
     printf( "Fatal Error: %s\nSDL:%s\n", message, SDL_GetError() );
@@ -205,6 +214,7 @@ frBody *addEntityBody( Context *context, Entity *entity, frBodyType bodyType ) {
             )
     );
     frSetBodyAngle( entity->body, deg2rad( entity->angle ) );
+    frSetBodyUserData( entity->body, entity );
     activateEntity( context, entity );
 }
 
@@ -224,12 +234,12 @@ void shoot( Context *context ) {
     bullet->y = context->player->y + context->player->h;
     bullet->enabled = -1;
     bullet->ttlEnabled = -1;
-    bullet->ttl = 3;
+    bullet->ttl = 10;
     bullet->dynamic = -1;
 
     updateBodyPhysics( bullet );
     activateEntity( context, bullet );
-    frApplyGravityToBody( bullet->body, (frVector2) { .x = 7000, .y = 0.0 } );
+    //frApplyGravityToBody( bullet->body, (frVector2) { .x = 7000, .y = 0.0 } );
 }
 
 void updateEntity( Context *context, Entity *entity, float delta ) {
@@ -272,6 +282,27 @@ void update( Context *context, float delta ) {
 
     for( int i = 0; i < BULLETS; i++ )
         updateEntity( context, context->bullets[i], delta );
+}
+
+void onCollision( frBodyPair bodies, frCollision *value ) {
+    if (value->count == 0) return;
+
+    Entity *entity1 = frGetBodyUserData(bodies.first);
+    Entity *entity2 = frGetBodyUserData(bodies.second);
+
+    if( entity1->type == ENTITY_BULLET && entity2->type == ENTITY_BULLET ) {
+        frVector2 speed1 = frGetBodyVelocity( entity1->body );
+        frVector2 speed2 = frGetBodyVelocity( entity2->body );
+
+
+        Entity *bullet = entity2;
+        if( speed1.x + speed1.y > speed2.x + speed2.y )
+            bullet = entity1;
+
+        bullet->ttlEnabled = 0;
+        bullet->enabled = 0;
+        deactivateEntity( globalContext, bullet );
+    }
 }
 
 void updatePhysics( Context *context, float timeStep ) {
@@ -390,6 +421,8 @@ int main( int argc, char **argv ) {
 
     /* physics init */
     context.world = frCreateWorld(frVector2ScalarMultiply(FR_WORLD_DEFAULT_GRAVITY, 2.5f), PHYSICS_CELL);
+    globalContext = &context;
+    frSetWorldCollisionHandler(context.world, (frCollisionHandler) { .preStep = onCollision, });
 
     Entity *box = loadEntity( &context, "media/block-blue.png" );
     box->x = 300;
@@ -406,6 +439,7 @@ int main( int argc, char **argv ) {
     for( int i = 0; i < BULLETS; i++ ) {
         context.bullets[i] = loadEntityEx( &context, "media/bullet.png", lastTexture );
         context.bullets[i]->enabled = 0;
+        context.bullets[i]->type = ENTITY_BULLET;
         lastTexture = context.bullets[0]->texture;
 
         addLink( &context.entities, context.bullets[i] );
