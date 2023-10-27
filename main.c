@@ -20,9 +20,11 @@
 
 #define max(x,y) ( x<y ? y : x )
 #define min(x,y) ( x<y ? x : y )
+#define deg2rad( deg ) (( deg * M_PI ) / 180.0f)
+#define rad2deg( rad ) (( rad * 180.0f ) / M_PI)
 
 #define BULLETS 10
-#define BLOCKS 20
+#define BLOCKS 7 
 #define PHYSICS_SPS 60
 #define PHYSICS_CELL 2.8f
 
@@ -37,6 +39,7 @@ typedef struct {
     int y;
     int w;
     int h;
+    float angle;
     float fx;
     float fy;
 
@@ -44,6 +47,8 @@ typedef struct {
     int enabled;
     int ttlEnabled;
     float ttl;
+
+    frBody *body;
 } Entity;
 
 typedef struct {
@@ -169,6 +174,27 @@ Entity *loadEntity( Context *context, char *imageFilename ) {
     return loadEntityEx( context, imageFilename, NULL );
 }
 
+frBody *addEntityBody( Context *context, Entity *entity, frBodyType bodyType ) {
+    entity->body = frCreateBodyFromShape(
+            bodyType,
+            frVector2PixelsToUnits( (frVector2) { .x = entity->x + entity->w/2, .y = entity->y + entity->h/2 } ),
+            frCreateRectangle( (frMaterial) { .density = 1.0f, .friction=0.35f },
+                frPixelsToUnits( entity->w ),
+                frPixelsToUnits( entity->h )
+            )
+    );
+    frSetBodyAngle( entity->body, deg2rad( entity->angle ) );
+    frAddBodyToWorld( context->world, entity->body );
+}
+
+void updateEntityPhysics( Entity *entity ) {
+    frVector2 position = frGetBodyPosition( entity->body );
+    entity->x = frUnitsToPixels( position.x ) - entity->w/2;
+    entity->y = frUnitsToPixels( position.y ) - entity->h/2;
+    entity->angle = rad2deg( frGetBodyAngle( entity->body ) );
+}
+
+
 void shoot( Context *context ) {
     Entity *bullet = context->bullets[0];
     int i = 0;
@@ -231,8 +257,11 @@ void update( Context *context, float delta ) {
 
 void updatePhysics( Context *context, float timeStep ) {
     frUpdateWorld( context->world, timeStep );
-    for( int i = 0; i <BULLETS; i++ ) {
 
+    Link *link = context->entities;
+    while( link != NULL ) {
+        updateEntityPhysics( link->item );
+        link = link->next;
     }
 }
 
@@ -243,7 +272,7 @@ void drawEntity( Context *context, Entity *entity ) {
     if( !entity->enabled )
         return;
     SDL_Rect targetRect = { entity->x, entity->y, entity->w, entity->h };
-    SDL_RenderCopyEx( context->renderer, entity->texture, NULL, &targetRect, 0.0, NULL, SDL_FLIP_NONE );
+    SDL_RenderCopyEx( context->renderer, entity->texture, NULL, &targetRect, entity->angle, NULL, SDL_FLIP_NONE );
 }
 
 void drawPhysics( Context *context, frBody *body ) {
@@ -300,11 +329,18 @@ void draw( Context *context ){
     drawEntity( context, context->player );
     for( int i = 0; i < BULLETS; i++ )
         drawEntity( context, context->bullets[i] );
-    for( int i = 0; i < BLOCKS; i++ )
-        drawEntity( context, context->blocks[i] );
 
-    drawPhysics( context, context->box );
-    drawPhysics( context, context->ground );
+    Link *link = context->entities;
+    while( link != NULL ) {
+        drawEntity( context, link->item );
+        link = link->next;
+    }
+
+    for( int i = 0; i < frGetBodyCountForWorld( context->world ); i++ )
+        drawPhysics( context, frGetBodyFromWorld( context->world, i ) );
+
+    //drawPhysics( context, context->box );
+    //drawPhysics( context, context->ground );
 }
 
 void render( Context *context ) {
@@ -348,7 +384,14 @@ int main( int argc, char **argv ) {
             frPixelsToUnits(0.1f * context.height)
         )
     );
-    frAddBodyToWorld( context.world, context.ground );
+
+    Entity *box = loadEntity( &context, "media/block-blue.png" );
+    box->x = 300;
+    box->y = 300;
+    addLink( &context.entities, box );
+    addEntityBody( &context, box, FR_BODY_DYNAMIC );
+
+    //frAddBodyToWorld( context.world, context.ground );
     context.box = frCreateBodyFromShape(
             FR_BODY_DYNAMIC,
             frVector2PixelsToUnits( (frVector2) { .x = 0.5f * context.width, .y = 0.35f * context.height } ),
@@ -377,7 +420,9 @@ int main( int argc, char **argv ) {
 
         context.blocks[i]->x = context.blocks[i]->w*i;
         context.blocks[i]->y = context.height - context.blocks[i]->h;
+        context.blocks[i]->angle = 10;
         addLink( &context.entities, context.blocks[i] );
+        addEntityBody( &context, context.blocks[i], FR_BODY_STATIC );
     }
     printf( "Links: %d\n", linkCount( context.entities ) );
 
