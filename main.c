@@ -33,6 +33,11 @@ typedef struct _Link {
     void *item;
 } Link;
 
+typedef struct _MapItem {
+    char *name;
+    void *item;
+} MapItem;
+
 typedef enum _EntityType {
     ENTITY_UNKNOWN,
     ENTITY_BULLET,
@@ -74,6 +79,7 @@ typedef struct {
     Entity *blocks[BLOCKS];
 
     Link *entities;
+    Link *textureCache;
 
     frWorld *world;
 
@@ -121,6 +127,28 @@ int linkCount( Link *link ) {
     return i;
 }
 
+Link *addMapItem( Link **link, char *name, void *item ) {
+    MapItem *mapItem = calloc( 1, sizeof( MapItem ) ); 
+    int len = strlen( name );
+    mapItem->name = calloc( 1, len+1 );
+    strncpy( mapItem->name, name, len );
+    mapItem->item = item;
+
+    return addLink( link, mapItem );
+}
+
+void *mapLookup( Link *link, char *name ) {
+    while( link != NULL ) {
+        MapItem *mapItem = link->item;
+        if( !strcmp( name, mapItem->name ) )
+            return mapItem->item;
+        link = link->next;
+    }
+
+    return NULL;
+}
+
+
 void initSDL( Context *context ) {
     if( SDL_Init( SDL_INIT_MODULES ) < 0 )
         bailOut( "Could not initialize SDL." );
@@ -157,14 +185,18 @@ SDL_Surface *loadImage( Context *context, char *imageFilename ) {
     return optimizedSurface;
 }
 
-Entity *loadEntityEx( Context *context, char *imageFilename, SDL_Texture *texture ) {
+Entity *loadEntity( Context *context, char *imageFilename ) {
     //SDL_Surface *surface = loadImage(
     Entity *entity = calloc( 1, sizeof(Entity) );
 
-    if( texture == NULL )
-        entity->texture = IMG_LoadTexture( context->renderer, imageFilename );
-    else
-        entity->texture = texture;
+    SDL_Texture *texture = mapLookup( context->textureCache, imageFilename );
+
+    if( texture == NULL ) {
+        texture = IMG_LoadTexture( context->renderer, imageFilename );
+        addMapItem( &context->textureCache, imageFilename, texture );
+    }
+    
+    entity->texture = texture;
 
     if( !entity->texture ) {
         printf( "Could not load texture %s\n", imageFilename );
@@ -177,9 +209,6 @@ Entity *loadEntityEx( Context *context, char *imageFilename, SDL_Texture *textur
     entity->dynamic = 0;
 
     return entity;
-}
-Entity *loadEntity( Context *context, char *imageFilename ) {
-    return loadEntityEx( context, imageFilename, NULL );
 }
 
 void activateEntity( Context *context, Entity *entity ) {
@@ -297,7 +326,7 @@ void onCollision( frBodyPair bodies, frCollision *value ) {
 
         Entity *bullet = entity2;
         if( speed1.x + speed1.y > speed2.x + speed2.y )
-            bullet = entity1;
+            bullet = entity2;
 
         bullet->ttlEnabled = 0;
         bullet->enabled = 0;
@@ -400,6 +429,7 @@ void render( Context *context ) {
 int main( int argc, char **argv ) {
     Context context;
     context.entities = NULL;
+    context.textureCache = NULL;
     context.running = -1;
 
     char *title = argv[0];
@@ -435,21 +465,17 @@ int main( int argc, char **argv ) {
     context.player->x = 200;
     context.player->y = 200;
 
-    SDL_Texture *lastTexture = NULL;
     for( int i = 0; i < BULLETS; i++ ) {
-        context.bullets[i] = loadEntityEx( &context, "media/bullet.png", lastTexture );
+        context.bullets[i] = loadEntity( &context, "media/bullet.png" );
         context.bullets[i]->enabled = 0;
         context.bullets[i]->type = ENTITY_BULLET;
-        lastTexture = context.bullets[0]->texture;
 
         addLink( &context.entities, context.bullets[i] );
         addEntityBody( &context, context.bullets[i], FR_BODY_DYNAMIC );
         deactivateEntity( &context, context.bullets[i] );
     }
-    lastTexture = NULL;
     for( int i = 0; i < BLOCKS; i++ ) {
-        context.blocks[i] = loadEntityEx( &context, "media/block-purple.png", lastTexture );
-        lastTexture = context.blocks[0]->texture;
+        context.blocks[i] = loadEntity( &context, "media/block-purple.png" );
 
         context.blocks[i]->x = context.blocks[i]->w*i;
         context.blocks[i]->y = context.height - context.blocks[i]->h;
